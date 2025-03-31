@@ -1,0 +1,29 @@
+name: Dev Tunnel (Ngrok)
+
+on:
+  workflow_dispatch:  # Manuelles Starten via GitHub-UI
+
+jobs:
+  tunnel:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🔁 Checkout Code
+        uses: actions/checkout@v3
+
+      - name: 📦 Install Ngrok
+        run: |
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+          sudo apt update && sudo apt install ngrok -y
+
+      - name: ⚙️ Start Dev Tunnel on Port 3000
+        env:
+          NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
+        run: |
+          ngrok config add-authtoken "$NGROK_AUTHTOKEN"
+          nohup ngrok http 3000 > ngrok.log &
+          echo "Ngrok startet... bitte 10 Sekunden warten..."
+          sleep 12
+          echo "Tunnel-Infos:"
+          curl -s http://localhost:4040/api/tunnels | jq '.tunnels[].public_url'
