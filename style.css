@@ -1,0 +1,294 @@
+/* =====================================
+   style.css
+   Enthält alle Styles für Write A Story
+   ===================================== */
+
+/* === Farbvariablen === */
+:root {
+    --primary-color: #023047; /* Dunkelblau */
+    --secondary-color: #219ebc; /* Mittelblau */
+    --accent-color: #ffb703; /* Gelb */
+    --danger-color: #ae2012; /* Dunkelrot */
+    --success-color: #008000; /* Grün */
+    --light-bg: #f1faee; /* Sehr helles Blaugrün */
+    --medium-bg: #a8dadc; /* Helles Blaugrün */
+    --dark-text: #333;
+    --light-text: #fff;
+    --border-color: #ccc;
+    --button-bg: #8ecae6; /* Hellblau für Buttons */
+    --button-hover-bg: #219ebc; /* Mittelblau für Hover */
+}
+
+/* === Basis-Layout === */
+body {
+    font-family: 'Arial', sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    background-color: var(--light-bg);
+    color: var(--dark-text);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* Oben ausrichten, damit man scrollen kann */
+    min-height: 100vh;
+    padding-top: 20px; /* Abstand oben */
+    padding-bottom: 20px; /* Abstand unten */
+}
+
+#gameContainer {
+    max-width: 900px;
+    width: 95%;
+    background-color: var(--light-text);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin: 20px;
+}
+
+/* Bereiche */
+#benutzerBereich,
+#raumBereich,
+#spielBereich,
+#configSection,
+#finalStorySection {
+    padding: 15px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color); /* Trennlinie */
+}
+#finalStorySection {
+    border-bottom: none;
+}
+
+
+h1, h2, h3, h4 {
+    color: var(--primary-color);
+    margin-top: 0;
+}
+h4 {
+    margin-bottom: 5px;
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid var(--border-color);
+    margin: 15px 0;
+}
+
+/* === Buttons === */
+button {
+    background-color: var(--button-bg);
+    color: var(--primary-color);
+    border: 1px solid var(--secondary-color);
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.95em;
+    margin: 5px 5px 5px 0;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    font-weight: bold;
+}
+
+button:hover:not(:disabled) {
+    background-color: var(--button-hover-bg);
+    color: var(--light-text);
+    border-color: var(--primary-color);
+}
+
+button:disabled {
+    background-color: #ccc;
+    border-color: #bbb;
+    color: #777;
+    cursor: not-allowed;
+}
+
+/* Spezielle Buttons */
+#startButton, #saveConfigButton {
+    background-color: var(--success-color);
+    color: var(--light-text);
+    border-color: darkgreen;
+}
+#startButton:hover:not(:disabled), #saveConfigButton:hover:not(:disabled) {
+    background-color: darkgreen;
+}
+
+#confirmSelectionButton {
+     background-color: var(--accent-color);
+     color: var(--primary-color);
+     border-color: #e85d04; /* Orange */
+     font-size: 1.1em;
+     padding: 10px 15px;
+}
+#confirmSelectionButton:hover:not(:disabled) {
+     background-color: #e85d04; /* Orange */
+     color: var(--light-text);
+}
+
+/* Wortauswahl-Buttons (gemeinsamer Stil) */
+.word-button, .character-button {
+    padding: 5px 10px;
+    margin: 3px;
+    font-size: 0.9em;
+}
+
+/* Farben pro Kategorie */
+.word-button.wo { background-color: #fca311; color: var(--primary-color); border-color: #e85d04;} /* Orange */
+.word-button.was { background-color: #ef476f; color: var(--light-text); border-color: #d00000; } /* Pink/Rot */
+.word-button.wie { background-color: #ffd166; color: var(--primary-color); border-color: #ffb703; } /* Hellgelb */
+.word-button.nomen { background-color: #06d6a0; color: var(--primary-color); border-color: #04a777; } /* Türkis */
+.word-button.verben { background-color: #118ab2; color: var(--light-text); border-color: #073b4c; } /* Dunkelblau */
+.word-button.adjektive { background-color: #5a189a; color: var(--light-text); border-color: #3c096c; } /* Lila */
+
+/* Hover für Wortbuttons */
+.word-button:hover:not(.selected) {
+    opacity: 0.8;
+}
+
+/* Charakter-Buttons */
+.character-button {
+    background-color: #e0e0e0; /* Grau */
+    color: var(--dark-text);
+    border-color: #bdbdbd;
+}
+
+/* Ausgewählte Buttons */
+.word-button.selected, .character-button.selected {
+    border-width: 2px;
+    border-style: solid;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+    transform: scale(1.05); /* Leichte Vergrößerung */
+}
+/* Spezifische ausgewählte Farben (optional, Rand reicht oft) */
+.word-button.wo.selected { border-color: var(--primary-color); }
+.word-button.was.selected { border-color: var(--light-text); }
+.word-button.wie.selected { border-color: var(--primary-color); }
+.word-button.nomen.selected { border-color: var(--primary-color); }
+.word-button.verben.selected { border-color: var(--light-text); }
+.word-button.adjektive.selected { border-color: var(--light-text); }
+.character-button.selected {
+    background-color: var(--primary-color);
+    color: var(--light-text);
+    border-color: var(--primary-color);
+}
+
+
+/* === Eingabefelder === */
+input[type="text"], input[type="number"] {
+    padding: 8px;
+    margin: 5px 5px 5px 0;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    min-width: 250px;
+    font-size: 0.95em;
+}
+input[type="number"] {
+    min-width: 50px;
+     width: 60px;
+}
+
+label {
+    display: inline-block;
+    min-width: 150px; /* Sorgt für Ausrichtung untereinander */
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+
+/* === Listen & Nachrichten === */
+#playerList, #messagesList, #storyProgress, #finalStoryList {
+    list-style-type: none;
+    padding: 0;
+    margin: 10px 0;
+}
+
+#playerList li {
+    margin-bottom: 5px;
+    padding: 5px 8px;
+    background-color: #e9ecef;
+    border-radius: 3px;
+    border-left: 4px solid; /* Platz für Farbe */
+    border-color: transparent; /* Standardmäßig unsichtbar */
+}
+
+#messagesList, #storyProgress {
+    border: 1px solid var(--border-color);
+    background-color: #f8f9fa;
+    max-height: 200px; /* Begrenzte Höhe */
+    overflow-y: auto; /* Scrollbar bei Bedarf */
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
+
+#messagesList li, #storyProgress li {
+    padding: 5px 0;
+    border-bottom: 1px dashed #eee;
+    animation: fadeIn 0.5s;
+}
+#messagesList li:last-child, #storyProgress li:last-child {
+    border-bottom: none;
+}
+
+#serverMessages {
+     margin-top: 20px;
+}
+
+
+/* === Auswahlbereiche === */
+.role-section {
+    border: 1px solid var(--medium-bg);
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    background-color: #fff;
+}
+.word-category, #woSelection, #wasSelection, #wieSelection {
+    margin-bottom: 10px;
+}
+
+/* === Finale Geschichte === */
+#finalStorySection {
+    background-color: #eaf4f4; /* Leicht anderer Hintergrund */
+    border: 2px solid var(--primary-color);
+}
+
+#finalStoryList li {
+    padding: 10px;
+    border-bottom: 1px dashed var(--border-color);
+    line-height: 1.8;
+    font-size: 1.1em;
+}
+#finalStoryList li:last-child {
+    border-bottom: none;
+}
+
+/* Hervorgehobene Wörter in der finalen Geschichte */
+.highlighted-word {
+    font-weight: bold;
+    display: inline-block; /* Wichtig für Padding/Background */
+    padding: 2px 5px;
+    border-radius: 4px;
+    color: var(--dark-text); /* Standard-Textfarbe */
+    /* Hintergrundfarbe wird inline gesetzt */
+    box-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    margin: 0 1px; /* Kleiner Abstand */
+}
+
+
+/* === Hilfsklassen === */
+.hidden {
+    display: none !important; /* Wichtig, um sicherzustellen, dass es versteckt ist */
+}
+
+.error {
+    color: var(--danger-color);
+    margin-top: 5px;
+    font-weight: bold;
+    min-height: 1.2em; /* Platzhalter, damit Layout nicht springt */
+}
+
+/* === Animation === */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}

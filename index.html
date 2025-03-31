@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Write A Story</title>
+  <!-- CSS einbinden -->
+  <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+  <!-- Benutzerbereich: Ermöglicht dem Benutzer die Namensauswahl -->
+  <div id="benutzerBereich">
+    <h1>Wähle deinen Namen</h1>
+    <input type="text" id="usernameInput" placeholder="Dein Name..." />
+    <button id="nameButton">OK</button>
+  </div>
+
+  <!-- Raumbereich: Für das Erstellen oder Beitreten eines Raums -->
+  <div id="raumBereich" class="hidden">
+    <h1>Raum</h1>
+    <button id="createRoomButton">Neuen Raum erstellen</button>
+    <hr>
+    <input type="text" id="roomCodeInput" placeholder="Raum-Code eingeben..." />
+    <button id="joinRoomButton">Raum beitreten</button>
+    <div id="roomError"></div>
+  </div>
+
+  <!-- Spielbereich: Zeigt Spielerliste, Nachrichten und Start-Button für den GM -->
+  <div id="spielBereich" class="hidden">
+    <h1>Write A Story</h1>
+    <div id="roomInfo"></div>
+    <h4>Spieler:</h4>
+    <ul id="playerList"></ul>
+    <button id="startButton" class="hidden">Spiel starten</button>
+    <hr>
+    <h4>Nachrichten:</h4>
+    <ul id="messages"></ul>
+  </div>
+
+  <!-- Wortauswahlbereich: Ermöglicht die Auswahl von Nomen, Verben und Adjektiven -->
+  <div id="wordSelectionSection" class="hidden">
+    <h3>Wort Auswahl</h3>
+    <div id="wordSelectionInfo"></div> <!-- Anzeige für ausgewählte Wörter -->
+
+    <div id="characterSelection" class="hidden">
+      <h4>Charaktere (wähle bis zu 5)</h4>
+      <div id="charactersList"></div>
+    </div>
+
+    <div id="nomenSelection">
+      <h4>Nomen</h4>
+      <!-- Hier werden die Nomen-Buttons per JS eingefügt -->
+    </div>
+    <div id="verbenSelection">
+      <h4>Verben</h4>
+      <!-- Hier werden die Verben-Buttons per JS eingefügt -->
+    </div>
+    <div id="adjektiveSelection">
+      <h4>Adjektive</h4>
+      <!-- Hier werden die Adjektive-Buttons per JS eingefügt -->
+    </div>
+
+    <button id="confirmSelectionButton">Auswahl bestätigen</button>
+  </div>
+
+  <!-- Konfigurationsbereich: Nur für den GM sichtbar, zur Anpassung der Wortlisten -->
+  <div id="configSection" class="hidden">
+    <h3>Raumkonfiguration</h3>
+    <label for="nomenInput">Nomen (Komma-getrennt):</label>
+    <input type="text" id="nomenInput" placeholder="z.B. Hund, Katze, Baum">
+    <br>
+    <label for="verbenInput">Verben (Komma-getrennt):</label>
+    <input type="text" id="verbenInput" placeholder="z.B. laufen, springen, essen">
+    <br>
+    <label for="adjektiveInput">Adjektive (Komma-getrennt):</label>
+    <input type="text" id="adjektiveInput" placeholder="z.B. schnell, groß, bunt">
+    <br>
+    <label for="charactersInput">Charaktere (Komma-getrennt):</label>
+    <input type="text" id="charactersInput" placeholder="z.B. Max, Emma, Paul">
+    <br>
+    <button id="saveConfigButton">Konfiguration speichern</button>
+  </div>
+
+  <!-- Finale Geschichte: Zeigt die vollständige Geschichte am Ende des Spiels -->
+  <div id="finalStorySection" class="hidden">
+    <h2>Finale Geschichte</h2>
+    <p>Hier ist eure gemeinsam geschriebene Geschichte:</p>
+    <ul id="finalStoryList"></ul>
+  </div>
+
+  
+  <!-- Socket.io -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <!-- Nur ein Haupt-Clientskript -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialisiere Socket.io
+      const socket = io();
+      
+      // DOM Elemente
+      const benutzerBereich = document.getElementById('benutzerBereich');
+      const raumBereich = document.getElementById('raumBereich');
+      const spielBereich = document.getElementById('spielBereich');
+      const usernameInput = document.getElementById('usernameInput');
+      const nameButton = document.getElementById('nameButton');
+      const joinRoomButton = document.getElementById('joinRoomButton');
+      const roomCodeInput = document.getElementById('roomCodeInput');
+      
+      // Event Listeners - nur einmal registrieren!
+      joinRoomButton.addEventListener('click', () => {
+        const roomCode = roomCodeInput.value.trim().toUpperCase();
+        if (roomCode && roomCode.length === 5) {
+          socket.emit('join room', roomCode);
+        } else {
+          roomError.textContent = 'Bitte gib einen 5-stelligen Raum-Code ein.';
+        }
+      });
+        nameButton.addEventListener('click', () => {
+            const username = usernameInput.value.trim();
+            if (username) {
+                socket.emit('setUsername', username);
+            } else {
+                alert('Bitte gib einen Benutzernamen ein!');
+            }
+        });
+
+        createRoomButton.addEventListener('click', () => {
+            socket.emit('create room');
+        });
+
+        joinRoomButton.addEventListener('click', () => {
+            const roomCode = roomCodeInput.value.trim().toUpperCase();
+            if (roomCode && roomCode.length === 5) {
+                socket.emit('join room', roomCode);
+                roomError.textContent = '';
+            } else {
+                roomError.textContent = 'Bitte gib einen 5-stelligen Raum-Code ein.';
+            }
+        });
+
+        // Socket Events
+        socket.on('username set', () => {
+            benutzerBereich.classList.add('hidden');
+            raumBereich.classList.remove('hidden');
+        });
+
+        // ...existing code...
+    });
+  </script>
+
+  <script>
+    // ==============
+    // Zustände
+    // ==============
+    const socket = io();
+    let currentRoomCode = null;
+    let isGM = false;
+    let myRole = null;
+    let availableCharacters = [];
+    let activeCharacters = [];
+    let selectedCharacters = []; // Für Erzähler
+
+    // Für Ideengeber:
+    let selectedWord = null;
+    let selectedWordButton = null;
+
+    // Für Erzähler und Wortmeister (je nach Rolle):
+    let selectedWords = { nomen: [], verben: [], adjektive: [] };
+
+    // Farben pro Spieler-ID, um Text hervorzuheben
+    let playerColors = {};
+
+    // Statusvariable für Auswahlfeld-Sichtbarkeit
+    let isSelectionActive = false;
+
+    // Flags für Charakterauswahl
+    let changeMade = false;
+    let changedButton = null;
+
+    const gameState = {
+        isSelectionActive: false,
+        currentRound: 0,
+        hasSubmitted: false,
+        update(changes) {
+            Object.assign(this, changes);
+            this.updateUI();
+        },
+        updateUI() {
+            updateWordSelectionVisibility();
+            updateWordSelectionInfo();
+        }
+    };
+
+    // ==============
+    // DOM-Elemente
+    // ==============
+    const benutzerBereich = document.getElementById('benutzerBereich');
+    const raumBereich = document.getElementById('raumBereich');
+    const spielBereich = document.getElementById('spielBereich');
+    const usernameInput = document.getElementById('usernameInput');
+    const nameButton = document.getElementById('nameButton');
+    const messages = document.getElementById('messages');
+    const createRoomButton = document.getElementById('createRoomButton');
+    const roomCodeInput = document.getElementById('roomCodeInput');
+    const joinRoomButton = document.getElementById('joinRoomButton');
+    const roomError = document.getElementById('roomError');
+    const roomInfo = document.getElementById('roomInfo');
+    const playerList = document.getElementById('playerList');
+    const startButton = document.getElementById('startButton');
+
+    const configSection = document.getElementById('configSection');
+    const nomenInput = document.getElementById('nomenInput');
+    const verbenInput = document.getElementById('verbenInput');
+    const adjektiveInput = document.getElementById('adjektiveInput');
+    const charactersInput = document.getElementById('charactersInput');
+    const saveConfigButton = document.getElementById('saveConfigButton');
+
+    const finalStorySection = document.getElementById('finalStorySection');
+    const finalStoryList = document.getElementById('finalStoryList');
+
+    const wordSelectionSection = document.getElementById('wordSelectionSection');
+    const wordSelectionInfo = document.getElementById('wordSelectionInfo');
+    const confirmSelectionButton = document.getElementById('confirmSelectionButton');
+    const characterSelection = document.getElementById('characterSelection');
+    const charactersList = document.getElementById('charactersList');
+
+    // ==============
+    // Event-Listener
+    // ==============
+    // 1) Benutzername setzen
+    nameButton.addEventListener('click', () => {
+      const username = usernameInput.value.trim();
+      if (username) {
+        socket.emit('setUsername', username);
+      } else {
+        alert('Bitte gib einen Benutzernamen ein!');
+      }
+    });
+
+    // 2) Raum erstellen / beitreten
+    createRoomButton.addEventListener('click', () => {
+      socket.emit('create room');
+    });
+
+    joinRoomButton.addEventListener('click', () => {
+      const roomCode = roomCodeInput.value.trim().toUpperCase();
+      if (roomCode && roomCode.length === 5) {
+        socket.emit('join room', roomCode);
+        roomError.textContent = '';
+      } else {
+        roomError.textContent = 'Bitte gib einen 5-stelligen Raum-Code ein.';
+      }
+    });
+
+    // 3) Spiel starten
+    startButton.addEventListener('click', () => {
+      if (isGM) {
+        socket.emit('start game');
+        startButton.disabled = true;
+        startButton.textContent = 'Spiel wird gestartet...';
+      }
+    });
+
+    // 4) Konfiguration speichern
+    saveConfigButton.addEventListener('click', () => {
+      const configData = {
+        nomen: nomenInput.value.split(',').map(word => word.trim()).filter(word => word),
+        verben: verbenInput.value.split(',').map(word => word.trim()).filter(word => word),
+        adjektive: adjektiveInput.value.split(',').map(word => word.trim()).filter(word => word),
+        characters: charactersInput.value.split(',').map(char => char.trim()).filter(char => char)
+      };
+      socket.emit('configure room', configData);
+    });
+
+    // 5) Wortauswahl bestätigen
+    confirmSelectionButton.addEventListener('click', () => {
+      confirmSelectionButton.disabled = true; // Sofort deaktivieren
+      isSelectionActive = false;
+      updateWordSelectionVisibility(); // Sofort verstecken
+
+      let roundInputData = null;
+      let isValid = false;
+
+      if (myRole === 'Erzähler') {
+        const nomenArray = Array.isArray(selectedWords.nomen) ? selectedWords.nomen : [];
+        const verbenArray = Array.isArray(selectedWords.verben) ? selectedWords.verben : [];
+        const adjektiveArray = Array.isArray(selectedWords.adjektive) ? selectedWords.adjektive : [];
+
+        // Charaktere aus den ausgewählten Buttons
+        const selectedCharacters = Array.from(charactersList.querySelectorAll('.character-button.selected')).map(btn => btn.textContent);
+
+        isValid = (nomenArray.length + verbenArray.length + adjektiveArray.length) > 0;
+        if (isValid) {
+          roundInputData = {
+            role: myRole,
+            words: {
+              nomen: [...nomenArray],
+              verben: [...verbenArray],
+              adjektive: [...adjektiveArray]
+            },
+            characters: selectedCharacters
+          };
+        } else {
+          alert("Erzähler: Bitte wähle mindestens ein Wort aus.");
+          confirmSelectionButton.disabled = false;
+          isSelectionActive = true;
+          updateWordSelectionVisibility(); // Wieder anzeigen bei Fehler
+        }
+      } else if (myRole === 'Ideengeber') {
+        isValid = (selectedWord !== null);
+        if (isValid) {
+          roundInputData = { role: myRole, word: selectedWord };
+        } else {
+          alert("Ideengeber: Bitte wähle ein Wort aus.");
+          confirmSelectionButton.disabled = false;
+          isSelectionActive = true;
+          updateWordSelectionVisibility(); // Wieder anzeigen bei Fehler
+        }
+      } else {
+        // Wortmeister: in jeder Kategorie muss genau 1 Wort sein
+        const allSet = (selectedWords.nomen && selectedWords.verben && selectedWords.adjektive);
+        isValid = Boolean(allSet);
+        if (isValid) {
+          roundInputData = {
+            role: myRole,
+            words: {
+              nomen: selectedWords.nomen,
+              verben: selectedWords.verben,
+              adjektive: selectedWords.adjektive
+            }
+          };
+        } else {
+          alert("Wortmeister: Bitte wähle in jeder Kategorie genau ein Wort aus.");
+          confirmSelectionButton.disabled = false;
+          isSelectionActive = true;
+          updateWordSelectionVisibility(); // Wieder anzeigen bei Fehler
+        }
+      }
+
+      if (isValid && roundInputData) {
+        socket.emit('submitRoundInput', roundInputData, (response) => {
+          if (response.error) {
+            alert(response.error);
+            confirmSelectionButton.disabled = false;
+            isSelectionActive = true;
+            updateWordSelectionVisibility(); // Wieder anzeigen bei Fehler
+          } else {
+            // Reset selections
+            selectedWords = { nomen: [], verben: [], adjektive: [] };
+            selectedWord = null;
+            selectedWordButton = null;
+            resetWordSelectionUI(); // UI zurücksetzen
+            updateWordSelectionInfo();
+          }
+        });
+      } else {
+        confirmSelectionButton.disabled = false;
+        isSelectionActive = true;
+        updateWordSelectionVisibility(); // Wieder anzeigen bei ungültiger Eingabe
+      }
+    });
+
+    // ==============
+    // Socket.IO-Ereignisse
+    // ==============
+    socket.on('username set', () => {
+      benutzerBereich.classList.add('hidden');
+      raumBereich.classList.remove('hidden');
+    });
+
+    socket.on('room created', (newRoomCode) => {
+      isGM = true;
+      showSpielBereich(newRoomCode);
+    });
+
+    socket.on('joined room', (joinedRoomCode) => {
+      isGM = false;
+      showSpielBereich(joinedRoomCode);
+    });
+
+    socket.on('error message', (message) => {
+      if (!raumBereich.classList.contains('hidden')) {
+        roomError.textContent = message;
+      } else {
+        const item = document.createElement('li');
+        item.style.color = 'red';
+        item.textContent = `FEHLER: ${message}`;
+        messages.appendChild(item);
+      }
+    });
+
+    socket.on('update player list', (players) => {
+      playerList.innerHTML = '';
+      const colorPalette = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22'];
+      players.forEach((player, index) => {
+        const item = document.createElement('li');
+        playerColors[player.id] = colorPalette[index % colorPalette.length];
+        let text = player.username;
+        if (player.id === socket.id) text += ' (Du)';
+        if (player.isGM) text += ' [GM]';
+        item.textContent = text;
+        item.style.color = playerColors[player.id];
+        playerList.appendChild(item);
+      });
+    });
+
+    socket.on('game started', () => {
+      const item = document.createElement('li');
+      item.style.fontWeight = 'bold';
+      item.textContent = "--- Das Spiel beginnt! Wähle deine Wörter! ---";
+      messages.appendChild(item);
+      messages.scrollTop = messages.scrollHeight;
+
+      startButton.classList.add('hidden');
+      
+      gameState.update({
+          isSelectionActive: true,
+          currentRound: 1,
+          hasSubmitted: false
+      });
+
+      if (myRole === 'Erzähler') {
+          characterSelection.classList.remove('hidden');
+          populateCharacterSelection();
+      } else {
+          characterSelection.classList.add('hidden');
+      }
+    });
+
+    socket.on('role assigned', (role) => {
+        myRole = role;
+        
+        // Reset selections based on role
+        if (myRole === 'Erzähler') {
+            selectedWords = { nomen: [], verben: [], adjektive: [] };
+        } else if (myRole === 'Ideengeber') {
+            selectedWord = null;
+            selectedWordButton = null;
+        } else {
+            selectedWords = { nomen: null, verben: null, adjektive: null };
+        }
+        resetWordSelectionUI(); // UI zurücksetzen
+        const item = document.createElement('li');
+        item.style.fontWeight = 'bold';
+        item.textContent = `Deine Rolle für diese Runde: ${role}`;
+        messages.appendChild(item);
+        messages.scrollTop = messages.scrollHeight;
+    
+        gameState.update({
+            isSelectionActive: true,
+            hasSubmitted: false
+        });
+    });
+
+    socket.on('configuration saved', (configData) => {
+      const item = document.createElement('li');
+      item.style.color = 'green';
+      item.textContent = 'Raumkonfiguration gespeichert.';
+      messages.appendChild(item);
+    });
+
+    socket.on('start next round', (data) => {
+      const item = document.createElement('li');
+      item.style.fontStyle = 'italic';
+      item.textContent = `--- Runde ${data.roundNumber} beginnt! ---`;
+      messages.appendChild(item);
+      messages.scrollTop = messages.scrollHeight;
+
+      // Verzögerung von 2 Sekunden, um den Satz anzuzeigen
+      setTimeout(() => {
+        resetWordSelectionUI(); // Sicherstellen, dass die UI zurückgesetzt wird
+        isSelectionActive = true;
+        updateWordSelectionVisibility();
+        confirmSelectionButton.disabled = false;
+        if (currentConfig) {
+          populateWordSelection(currentConfig);
+        }
+        if (myRole === 'Erzähler') {
+          characterSelection.classList.remove('hidden');
+          populateCharacterSelection(data.activeCharacters);
+        } else {
+          characterSelection.classList.add('hidden');
+        }
+      }, 2000);
+    });
+
+    socket.on('gameOver', (data) => {
+      // Spiel beendet -> alles ausblenden, finale Geschichte anzeigen
+      spielBereich.classList.add('hidden');
+      wordSelectionSection.classList.add('hidden');
+      configSection.classList.add('hidden');
+
+      finalStoryList.innerHTML = '';
+      if (data.finalStory && data.finalStory.length > 0) {
+        data.finalStory.forEach(entry => {
+          const item = document.createElement('li');
+          // HTML-Inhalt (highlighted <span>-Tags)
+          item.innerHTML = entry.sentence;
+
+          // Farbschatten für die highlight-Spans
+          const highlightedSpans = item.querySelectorAll('.highlighted');
+          highlightedSpans.forEach(span => {
+            const players = span.getAttribute('data-players');
+            if (players) {
+              const playerIds = players.split(',');
+              let shadows = [];
+              playerIds.forEach((playerId, index) => {
+                const color = playerColors[playerId];
+                if (color) {
+                  const spread = (index + 1) * 1;
+                  shadows.push(`0 0 0 ${spread}px ${color}`);
+                }
+              });
+              span.style.boxShadow = shadows.join(', ');
+            }
+          });
+          finalStoryList.appendChild(item);
+        });
+      } else {
+        finalStoryList.innerHTML = '<li>Leider wurde keine Geschichte geschrieben.</li>';
+      }
+      finalStorySection.classList.remove('hidden');
+
+      // Nachricht im Chat
+      const item = document.createElement('li');
+      item.style.fontWeight = 'bold';
+      item.textContent = '--- Das Spiel ist beendet! Seht euch eure Geschichte an! ---';
+      messages.appendChild(item);
+      messages.scrollTop = messages.scrollHeight;
+      isSelectionActive = false;
+      updateWordSelectionVisibility();
+    });
+
+    socket.on('round result', (data) => {
+      isSelectionActive = false; // Deaktiviere Auswahl nach Rundenende
+      updateWordSelectionVisibility();
+      const item = document.createElement('li');
+      item.innerHTML = `Runde ${data.round}: ${data.sentence}`;
+
+      // Erzeuge Farbschatten
+      const highlightedSpans = item.querySelectorAll('.highlighted');
+      highlightedSpans.forEach(span => {
+        const players = span.getAttribute('data-players');
+        if (players) {
+          const playerIds = players.split(',');
+          let shadows = [];
+          playerIds.forEach((playerId, index) => {
+            const color = playerColors[playerId];
+            if (color) {
+              const spread = (index + 1) * 1;
+              shadows.push(`0 0 0 ${spread}px ${color}`);
+            }
+          });
+          span.style.boxShadow = shadows.join(', ');
+        }
+      });
+      messages.appendChild(item);
+      messages.scrollTop = messages.scrollHeight;
+      isSelectionActive = false;
+      updateWordSelectionVisibility();
+    });
+
+    socket.on('update configuration', (configData) => {
+      availableCharacters = configData.characters;
+      populateWordSelection(configData);
+    });
+
+    // ==============
+    // Hilfsfunktionen
+    // ==============
+    function showSpielBereich(code) {
+      currentRoomCode = code;
+      raumBereich.classList.add('hidden');
+      spielBereich.classList.remove('hidden');
+      roomInfo.textContent = `Raum-Code: ${currentRoomCode}`;
+
+      if (isGM) {
+        startButton.classList.remove('hidden');
+        configSection.classList.remove('hidden');
+      }
+    }
+
+    function updateWordSelectionVisibility() {
+      try {
+        if (!wordSelectionSection) {
+          console.error('wordSelectionSection not found');
+          return;
+        }
+        
+        const shouldShow = gameState.isSelectionActive && !gameState.hasSubmitted;
+        wordSelectionSection.classList.toggle('hidden', !shouldShow);
+        
+        if (myRole === 'Erzähler') {
+          characterSelection.classList.toggle('hidden', !shouldShow);
+        } else {
+          characterSelection.classList.add('hidden'); // Ensure hidden for non-Erzähler
+        }
+      } catch (error) {
+        console.error('Error updating visibility:', error);
+      }
+    }
+
+    function populateWordSelection(configData) {
+      const nomenDiv = document.getElementById('nomenSelection');
+      const verbenDiv = document.getElementById('verbenSelection');
+      const adjektiveDiv = document.getElementById('adjektiveSelection');
+
+      // Vorherigen Inhalt leeren
+      nomenDiv.innerHTML = '<h4>Nomen</h4>';
+      verbenDiv.innerHTML = '<h4>Verben</h4>';
+      adjektiveDiv.innerHTML = '<h4>Adjektive</h4>';
+
+      // Buttons erstellen
+      configData.nomen.forEach(word => {
+        const btn = document.createElement('button');
+        btn.textContent = word;
+        btn.title = "Klick, um auszuwählen";
+        btn.addEventListener('click', () => selectWord('nomen', word, btn));
+        nomenDiv.appendChild(btn);
+      });
+
+      configData.verben.forEach(word => {
+        const btn = document.createElement('button');
+        btn.textContent = word;
+        btn.title = "Klick, um auszuwählen";
+        btn.addEventListener('click', () => selectWord('verben', word, btn));
+        verbenDiv.appendChild(btn);
+      });
+
+      configData.adjektive.forEach(word => {
+        const btn = document.createElement('button');
+        btn.textContent = word;
+        btn.title = "Klick, um auszuwählen";
+        btn.addEventListener('click', () => selectWord('adjektive', word, btn));
+        adjektiveDiv.appendChild(btn);
+      });
+
+      updateWordSelectionVisibility();
+      updateWordSelectionInfo();
+    }
+
+    function selectWord(category, word, btn) {
+      if (myRole === 'Erzähler') {
+        if (!Array.isArray(selectedWords[category])) {
+          selectedWords[category] = [];
+        }
+        if (selectedWords[category].includes(word)) {
+          // Abwählen
+          selectedWords[category] = selectedWords[category].filter(w => w !== word);
+          btn.classList.remove('selected');
+        } else {
+          if (selectedWords[category].length < 3) {
+            selectedWords[category].push(word);
+            btn.classList.add('selected');
+          } else {
+            alert("Du kannst nur 3 Wörter in dieser Kategorie auswählen.");
+          }
+        }
+      } else if (myRole === 'Ideengeber') {
+        // Nur ein Wort insgesamt
+        if (selectedWord === word) {
+          selectedWord = null;
+          btn.classList.remove('selected');
+        } else {
+          if (selectedWordButton) {
+            selectedWordButton.classList.remove('selected');
+          }
+          selectedWord = word;
+          selectedWordButton = btn;
+          btn.classList.add('selected');
+        }
+      } else {
+        // Wortmeister: genau 1 pro Kategorie
+        // Entferne Markierung anderer Buttons in dieser Kategorie
+        const parentDiv = btn.parentElement;
+        Array.from(parentDiv.getElementsByTagName('button')).forEach(b => {
+          b.classList.remove('selected');
+        });
+        selectedWords[category] = word;
+        btn.classList.add('selected');
+      }
+      updateWordSelectionInfo();
+    }
+
+    function updateWordSelectionInfo() {
+      if (myRole === 'Erzähler') {
+        const totalSelected = selectedWords.nomen.length + selectedWords.verben.length + selectedWords.adjektive.length;
+        wordSelectionInfo.textContent = `Ausgewählte Wörter: ${totalSelected}`;
+      } else if (myRole === 'Ideengeber') {
+        wordSelectionInfo.textContent = selectedWord
+          ? `Ausgewähltes Wort: ${selectedWord}`
+          : 'Kein Wort ausgewählt';
+      } else {
+        // Wortmeister: 1 Wort pro Kategorie (nomen/verben/adjektive)
+        let count = 0;
+        if (selectedWords.nomen) count++;
+        if (selectedWords.verben) count++;
+        if (selectedWords.adjektive) count++;
+        wordSelectionInfo.textContent = `Ausgewählte Wörter: ${count}/3`;
+      }
+    }
+
+    function populateCharacterSelection(active = []) {
+      charactersList.innerHTML = '';
+      selectedCharacters = [...active];
+      availableCharacters.forEach(char => {
+        const btn = document.createElement('button');
+        btn.textContent = char;
+        btn.classList.add('character-button');
+        if (active.includes(char)) {
+          btn.classList.add('selected');
+        }
+        btn.addEventListener('click', handleCharacterButtonClick);
+        charactersList.appendChild(btn);
+      });
+      changeMade = false;
+      changedButton = null;
+      enableAllButtons();
+    }
+
+    function handleCharacterButtonClick(event) {
+      const btn = event.target;
+      const char = btn.textContent;
+
+      if (!changeMade) {
+        toggleCharacterSelection(char, btn);
+        changedButton = btn;
+        changeMade = true;
+        disableOtherButtonsExcept(changedButton);
+      } else if (btn === changedButton) {
+        toggleCharacterSelection(char, btn);
+        changedButton = null;
+        changeMade = false;
+        enableAllButtons();
+      }
+    }
+
+    function toggleCharacterSelection(char, btn) {
+      if (selectedCharacters.includes(char)) {
+        selectedCharacters = selectedCharacters.filter(c => c !== char);
+        btn.classList.remove('selected');
+      } else {
+        selectedCharacters.push(char);
+        btn.classList.add('selected');
+      }
+    }
+
+    function disableOtherButtonsExcept(excludedBtn) {
+      Array.from(charactersList.children).forEach(b => {
+        if (b !== excludedBtn) {
+          b.disabled = true;
+        }
+      });
+    }
+
+    function enableAllButtons() {
+      Array.from(charactersList.children).forEach(b => {
+        b.disabled = false;
+      });
+    }
+
+    function resetWordSelectionUI() {
+      const wordButtons = document.querySelectorAll('#nomenSelection button, #verbenSelection button, #adjektiveSelection button');
+      console.log(`Resetting ${wordButtons.length} word buttons`); // Debugging log
+      wordButtons.forEach(btn => {
+        btn.classList.remove('selected');
+      });
+    }
+  </script>
+</body>
+</html>
